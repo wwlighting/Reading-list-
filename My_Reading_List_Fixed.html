@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Reading List</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; min-height: 100vh; padding: 2rem 1rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; align-items: center; }
+  .controls input[type=text] { flex: 1; min-width: 180px; padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; outline: none; }
+  .controls input[type=text]:focus { border-color: #888; }
+  .controls select { padding: 8px 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; cursor: pointer; outline: none; }
+
+  /* Buttons */
+  .btn { padding: 8px 14px; font-size: 13px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .btn-primary { background: #2c5f2e; color: #fff; }
+  .btn-primary:hover { background: #224a24; }
+  .btn-danger { background: #fee2e2; color: #b91c1c; }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+
+  .stats { font-size: 13px; color: #888; margin-bottom: 0.75rem; }
+
+  /* Table */
+  .table-wrap { background: #fff; border-radius: 12px; border: 1px solid #e5e5e5; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: #888; padding: 10px 10px; border-bottom: 1px solid #eee; cursor: pointer; user-select: none; white-space: nowrap; background: #fafaf8; }
+  th.no-sort { cursor: default; }
+  th:not(.no-sort):hover { color: #333; }
+  .sort-arrow { margin-left: 3px; opacity: 0.4; }
+  th.active .sort-arrow { opacity: 1; color: #333; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+
+  /* Editable cells */
+  td[contenteditable=true] { outline: none; cursor: text; border-radius: 4px; }
+  td[contenteditable=true]:focus { background: #fffbe6; box-shadow: inset 0 0 0 1.5px #f59e0b; }
+
+  /* Badges */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; cursor: pointer; user-select: none; }
+  .badge-fiction { background: #eeedfe; color: #3c3489; }
+  .badge-nonfiction { background: #e1f5ee; color: #085041; }
+
+  /* Read toggle */
+  .read-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; cursor: pointer; user-select: none; white-space: nowrap; border: none; background: none; }
+  .read-toggle.read { background: #dbeafe; color: #1d4ed8; }
+  .read-toggle.want { background: #fef9c3; color: #92400e; }
+
+  /* Add book modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 1.75rem; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal h2 { font-size: 1.1rem; margin-bottom: 1.25rem; }
+  .form-row { margin-bottom: 1rem; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .form-row input, .form-row select { width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+  .form-row input:focus, .form-row select:focus { border-color: #888; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.25rem; }
+  .btn-cancel { background: #f3f4f6; color: #333; }
+  .btn-cancel:hover { background: #e5e7eb; }
+
+  /* Export */
+  .top-actions { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+
+  .del-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+  .del-btn:hover { color: #ef4444; background: #fee2e2; }
+
+  select.type-select { font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 20px; border: none; cursor: pointer; outline: none; }
+  select.type-select.fiction { background: #eeedfe; color: #3c3489; }
+  select.type-select.nonfiction { background: #e1f5ee; color: #085041; }
+  .sort-builder { background:#fff; border:1px solid #e5e5e5; padding:12px; border-radius:10px; margin-bottom:12px; font-size:13px; }
+  .sort-builder strong { display:block; margin-bottom:8px; }
+  .sort-builder .sort-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .sort-builder select, .priority-select { border:1px solid #ddd; border-radius:7px; padding:5px; background:white; font-size:12px; }
+  .sort-builder .btn { background:#f3f4f6; color:#333; margin-right:6px; }
+  .priority-select { width:100%; min-width:82px; }
+  .priority-select.next { background:#dcfce7; color:#166534; font-weight:700; }
+  .priority-select.high { background:#fef3c7; color:#92400e; }
+  .priority-select.low { color:#777; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📚 My Reading List</h1>
+  <p class="subtitle" id="subtitle"></p>
+
+  <div class="top-actions">
+    <button class="btn btn-primary" onclick="openModal()">+ Add Book</button>
+    <button class="btn" style="background:#f3f4f6;color:#333" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn" style="background:#f3f4f6;color:#333" onclick="saveToStorage()">💾 Save</button>
+    <span id="save-status" style="font-size:13px;color:#888;align-self:center"></span>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search titles, authors, recommendations…" oninput="render()" />
+    <select id="filter-type" onchange="render()">
+      <option value="">All types</option>
+      <option value="Fiction">Fiction</option>
+      <option value="Nonfiction">Nonfiction</option>
+    </select>
+    <select id="filter-genre" onchange="render()"></select>
+    <select id="filter-status" onchange="render()">
+      <option value="">All statuses</option>
+      <option value="Read">✅ Read</option>
+      <option value="Want to Read">🔖 Want to Read</option>
+    </select>
+    <select id="filter-priority" onchange="render()"><option value="">All priorities</option><option>Next</option><option>High</option><option>Medium</option><option>Low</option><option>None</option></select>
+  </div>
+  <div class="sort-builder" id="sort-builder"><strong>Sort by</strong><div id="sort-rows"></div><button class="btn btn-sm" onclick="addSortLevel()">+ Add sort column</button><button class="btn btn-sm" onclick="resetSort()">Reset sort</button></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28%" onclick="sort('title')">Title <span class="sort-arrow" id="arr-title">↕</span></th>
+          <th style="width:18%" onclick="sort('author')">Author <span class="sort-arrow" id="arr-author">↕</span></th>
+          <th style="width:10%" onclick="sort('type')">Type <span class="sort-arrow" id="arr-type">↕</span></th>
+          <th style="width:13%" onclick="sort('genre')">Genre <span class="sort-arrow" id="arr-genre">↕</span></th>
+          <th style="width:16%" onclick="sort('rec')">Recommended By <span class="sort-arrow" id="arr-rec">↕</span></th>
+          <th style="width:12%" onclick="sort('status')">Status <span class="sort-arrow" id="arr-status">↕</span></th>
+          <th onclick="sort('priority')">Priority <span class="sort-arrow" id="arr-priority">↕</span></th>
+          <th style="width:3%" class="no-sort"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Book Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Add a Book</h2>
+    <div class="form-row"><label>Title *</label><input type="text" id="f-title" placeholder="Book title" /></div>
+    <div class="form-row"><label>Author</label><input type="text" id="f-author" placeholder="Author name" /></div>
+    <div class="form-row"><label>Type</label>
+      <select id="f-type"><option value="Nonfiction">Nonfiction</option><option value="Fiction">Fiction</option></select>
+    </div>
+    <div class="form-row"><label>Genre</label><input type="text" id="f-genre" placeholder="e.g. History, Self-Help, Fantasy" /></div>
+    <div class="form-row"><label>Recommended By</label><input type="text" id="f-rec" placeholder="e.g. Ryan Holiday, Shelly's dad…" /></div>
+    <div class="form-row"><label>Status</label>
+      <select id="f-status"><option value="Want to Read">Want to Read</option><option value="Read">Read</option></select>
+    </div>
+    <div class="form-row"><label>Priority</label><select id="f-priority"><option>None</option><option>Next</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+    <div class="form-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addBook()">Add Book</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let books = [
+  { id:1, title:"Memoirs of Hadrian", author:"Marguerite Yourcenar", type:"Fiction", genre:"Historical Fiction", rec:"", status:"Want to Read" },
+  { id:2, title:"Waging a Good War", author:"Thomas E. Ricks", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:3, title:"Bury the Chains", author:"Adam Hochschild", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:4, title:"Courage Under Fire", author:"James Stockdale", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:5, title:"Good Inside", author:"Dr. Becky Kennedy", type:"Nonfiction", genre:"Parenting", rec:"", status:"Want to Read" },
+  { id:6, title:"Siddhartha", author:"Hermann Hesse", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Read" },
+  { id:7, title:"Outdoor Kids in an Inside World", author:"Steven Rinella", type:"Nonfiction", genre:"Parenting / Nature", rec:"", status:"Read" },
+  { id:8, title:"Sing, Unburied, Sing", author:"Jesmyn Ward", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:9, title:"Think Again", author:"Adam Grant", type:"Nonfiction", genre:"Psychology", rec:"", status:"Want to Read" },
+  { id:10, title:"On the Shortness of Life", author:"Seneca", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:11, title:"The Tiger: A True Story of Vengeance and Survival", author:"John Vaillant", type:"Nonfiction", genre:"Nature / Adventure", rec:"", status:"Want to Read" },
+  { id:12, title:"The Art of Learning", author:"Josh Waitzkin", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Read" },
+  { id:13, title:"Three Lives for Mississippi", author:"William Bradford Huie", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:14, title:"A Journey Through Texas", author:"Frederick Law Olmsted", type:"Nonfiction", genre:"History / Travel", rec:"", status:"Want to Read" },
+  { id:15, title:"The Way of Kings", author:"Brandon Sanderson", type:"Fiction", genre:"Fantasy", rec:"Sami", status:"Read" },
+  { id:16, title:"Caste: The Origins of Our Discontents", author:"Isabel Wilkerson", type:"Nonfiction", genre:"History / Society", rec:"Ryan Holiday", status:"Want to Read" },
+  { id:17, title:"The Life You Can Save", author:"Peter Singer", type:"Nonfiction", genre:"Philosophy / Ethics", rec:"Ryan Holiday", status:"Want to Read" },
+  { id:18, title:"Where I Was From", author:"Joan Didion", type:"Nonfiction", genre:"Memoir / Essay", rec:"Ryan Holiday", status:"Want to Read" },
+  { id:19, title:"First Principles", author:"Thomas Ricks", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:20, title:"Ask the Dust", author:"John Fante", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:21, title:"Hero of Two Worlds: The Marquis de Lafayette", author:"Mike Duncan", type:"Nonfiction", genre:"Biography", rec:"", status:"Want to Read" },
+  { id:22, title:"Pontius Pilate", author:"Ann Wroe", type:"Nonfiction", genre:"Biography", rec:"", status:"Want to Read" },
+  { id:23, title:"Man's Search for Meaning", author:"Viktor Frankl", type:"Nonfiction", genre:"Philosophy / Psychology", rec:"", status:"Want to Read" },
+  { id:24, title:"The Checklist Manifesto", author:"Atul Gawande", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Read" },
+  { id:25, title:"StrengthsFinder 2.0", author:"Tom Rath", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Read" },
+  { id:26, title:"The Obstacle Is the Way", author:"Ryan Holiday", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Read" },
+  { id:27, title:"Radical Acceptance", author:"Tara Brach", type:"Nonfiction", genre:"Mindfulness", rec:"", status:"Want to Read" },
+  { id:28, title:"Mastery", author:"George Leonard", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:29, title:"The Righteous Mind", author:"Jonathan Haidt", type:"Nonfiction", genre:"Psychology / Politics", rec:"", status:"Want to Read" },
+  { id:30, title:"Taming the Tiger Within", author:"Thich Nhat Hanh", type:"Nonfiction", genre:"Mindfulness", rec:"", status:"Want to Read" },
+  { id:31, title:"Stumbling on Happiness", author:"Daniel Gilbert", type:"Nonfiction", genre:"Psychology", rec:"", status:"Read" },
+  { id:32, title:"The Upswing", author:"Robert Putnam", type:"Nonfiction", genre:"Society", rec:"", status:"Want to Read" },
+  { id:33, title:"The Power of When", author:"Michael Breus", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:34, title:"The Tipping Point", author:"Malcolm Gladwell", type:"Nonfiction", genre:"Psychology / Society", rec:"", status:"Want to Read" },
+  { id:35, title:"Blink", author:"Malcolm Gladwell", type:"Nonfiction", genre:"Psychology", rec:"", status:"Want to Read" },
+  { id:36, title:"Outliers", author:"Malcolm Gladwell", type:"Nonfiction", genre:"Psychology / Society", rec:"", status:"Want to Read" },
+  { id:37, title:"What the Dog Saw", author:"Malcolm Gladwell", type:"Nonfiction", genre:"Essays", rec:"", status:"Want to Read" },
+  { id:38, title:"David and Goliath", author:"Malcolm Gladwell", type:"Nonfiction", genre:"Psychology / Society", rec:"", status:"Want to Read" },
+  { id:39, title:"Broadcasting Happiness", author:"Michelle Gielan", type:"Nonfiction", genre:"Psychology", rec:"Charles Poliquin / Tim Ferriss", status:"Want to Read" },
+  { id:40, title:"Daily Rituals: How Artists Work", author:"Mason Currey", type:"Nonfiction", genre:"Creativity", rec:"", status:"Want to Read" },
+  { id:41, title:"Titus Groan", author:"Mervyn Peake", type:"Fiction", genre:"Fantasy", rec:"", status:"Want to Read" },
+  { id:42, title:"Essentialism", author:"Greg McKeown", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Read" },
+  { id:43, title:"The Charisma Myth", author:"Olivia Fox Cabane", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:44, title:"Willpower", author:"Roy Baumeister & John Tierney", type:"Nonfiction", genre:"Psychology", rec:"", status:"Want to Read" },
+  { id:45, title:"The Life-Changing Magic of Tidying Up", author:"Marie Kondo", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Read" },
+  { id:46, title:"Mighty Be Our Powers", author:"Leymah Gbowee", type:"Nonfiction", genre:"Memoir", rec:"", status:"Want to Read" },
+  { id:47, title:"Surely You're Joking, Mr. Feynman!", author:"Richard Feynman", type:"Nonfiction", genre:"Memoir / Science", rec:"", status:"Want to Read" },
+  { id:48, title:"Comanches: The History of a People", author:"T.R. Fehrenbach", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:49, title:"Empire of the Summer Moon", author:"S.C. Gwynne", type:"Nonfiction", genre:"History", rec:"", status:"Want to Read" },
+  { id:50, title:"The Small Business Start-Up Kit for California", author:"Peri H. Pakroo", type:"Nonfiction", genre:"Business", rec:"", status:"Want to Read" },
+  { id:51, title:"The Successful Business Plan", author:"Rhonda Abrams", type:"Nonfiction", genre:"Business", rec:"", status:"Want to Read" },
+  { id:52, title:"Meaningful Work", author:"Shawn Askinosie", type:"Nonfiction", genre:"Business", rec:"Seth Godin", status:"Want to Read" },
+  { id:53, title:"Tribes", author:"Seth Godin", type:"Nonfiction", genre:"Business", rec:"", status:"Want to Read" },
+  { id:54, title:"Linchpin", author:"Seth Godin", type:"Nonfiction", genre:"Business", rec:"", status:"Want to Read" },
+  { id:55, title:"Turning Pro", author:"Steven Pressfield", type:"Nonfiction", genre:"Creativity / Self-Help", rec:"", status:"Want to Read" },
+  { id:56, title:"Gates of Fire", author:"Steven Pressfield", type:"Fiction", genre:"Historical Fiction", rec:"", status:"Want to Read" },
+  { id:57, title:"The Effective Executive", author:"Peter Drucker", type:"Nonfiction", genre:"Business", rec:"", status:"Want to Read" },
+  { id:58, title:"Happy City", author:"Charles Montgomery", type:"Nonfiction", genre:"Society / Urbanism", rec:"", status:"Want to Read" },
+  { id:59, title:"The Magic of Thinking Big", author:"David Schwartz", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:60, title:"Catching the Big Fish", author:"David Lynch", type:"Nonfiction", genre:"Creativity", rec:"", status:"Want to Read" },
+  { id:61, title:"59 Seconds", author:"Richard Wiseman", type:"Nonfiction", genre:"Psychology", rec:"Charles Poliquin / Tim Ferriss", status:"Want to Read" },
+  { id:62, title:"The One Thing", author:"Gary Keller", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:63, title:"James: A Novel", author:"Percival Everett", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:64, title:"The Goldfinch", author:"Donna Tartt", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:65, title:"After On", author:"Rob Reid", type:"Fiction", genre:"Science Fiction", rec:"Seth Godin", status:"Want to Read" },
+  { id:66, title:"The Overstory", author:"Richard Powers", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:67, title:"All the Light We Cannot See", author:"Anthony Doerr", type:"Fiction", genre:"Historical Fiction", rec:"", status:"Want to Read" },
+  { id:68, title:"Invisible Man", author:"Ralph Ellison", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+  { id:69, title:"The Golden Compass", author:"Philip Pullman", type:"Fiction", genre:"Fantasy", rec:"", status:"Want to Read" },
+  { id:70, title:"City of Thieves", author:"David Benioff", type:"Fiction", genre:"Historical Fiction", rec:"", status:"Read" },
+  { id:71, title:"The Punch Escrow", author:"Tal M. Klein", type:"Fiction", genre:"Science Fiction", rec:"Seth Godin", status:"Want to Read" },
+  { id:72, title:"Travels with Charley", author:"John Steinbeck", type:"Nonfiction", genre:"Travel / Memoir", rec:"", status:"Want to Read" },
+  { id:73, title:"Norse Mythology", author:"Neil Gaiman", type:"Fiction", genre:"Mythology / Fantasy", rec:"", status:"Read" },
+  { id:74, title:"The Graveyard Book", author:"Neil Gaiman", type:"Fiction", genre:"Fantasy", rec:"", status:"Read" },
+  { id:75, title:"Seveneves", author:"Neal Stephenson", type:"Fiction", genre:"Science Fiction", rec:"", status:"Want to Read" },
+  { id:76, title:"Bloodline (Wars of the Roses)", author:"Conn Iggulden", type:"Fiction", genre:"Historical Fiction", rec:"Dan Sykes", status:"Want to Read" },
+  { id:77, title:"A Gentleman in Moscow", author:"Amor Towles", type:"Fiction", genre:"Historical Fiction", rec:"Charlie Rogerson & Hale", status:"Want to Read" },
+  { id:78, title:"Meditations", author:"Marcus Aurelius", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:79, title:"Letters from a Stoic", author:"Seneca", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:80, title:"Discourses and Selected Writings", author:"Epictetus", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:81, title:"The Daily Stoic", author:"Ryan Holiday & Stephen Hanselman", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:82, title:"Lives of the Stoics", author:"Ryan Holiday & Stephen Hanselman", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:83, title:"The Inner Citadel", author:"Pierre Hadot", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:84, title:"How to Think Like a Roman Emperor", author:"Donald Robertson", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:85, title:"Cicero and Augustus", author:"Anthony Everitt", type:"Nonfiction", genre:"Biography", rec:"", status:"Want to Read" },
+  { id:86, title:"Atomic Habits", author:"James Clear", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:87, title:"Discipline Is Destiny", author:"Ryan Holiday", type:"Nonfiction", genre:"Philosophy / Self-Help", rec:"", status:"Want to Read" },
+  { id:88, title:"The War of Art", author:"Steven Pressfield", type:"Nonfiction", genre:"Creativity", rec:"", status:"Want to Read" },
+  { id:89, title:"Mastery", author:"Robert Greene", type:"Nonfiction", genre:"Self-Help", rec:"", status:"Want to Read" },
+  { id:90, title:"The Creative Habit", author:"Twyla Tharp", type:"Nonfiction", genre:"Creativity", rec:"", status:"Want to Read" },
+  { id:91, title:"Yes to Life: In Spite of Everything", author:"Viktor Frankl", type:"Nonfiction", genre:"Philosophy / Psychology", rec:"", status:"Want to Read" },
+  { id:92, title:"Courage Is Calling", author:"Ryan Holiday", type:"Nonfiction", genre:"Philosophy", rec:"", status:"Want to Read" },
+  { id:93, title:"Phosphorescence", author:"Julia Baird", type:"Nonfiction", genre:"Memoir / Essay", rec:"", status:"Want to Read" },
+  { id:94, title:"The Anxious Generation", author:"Jonathan Haidt", type:"Nonfiction", genre:"Psychology / Society", rec:"", status:"Want to Read" },
+  { id:95, title:"The Good Gut", author:"Michael Perry", type:"Nonfiction", genre:"Health", rec:"Coop", status:"Want to Read" },
+  { id:96, title:"The Midnight Fox", author:"Betsy Byars", type:"Fiction", genre:"Children's Fiction", rec:"", status:"Want to Read" },
+  { id:97, title:"Re-Wilding the Way", author:"Jack Loeffler", type:"Nonfiction", genre:"Nature", rec:"Rev Will Scott at CEC", status:"Want to Read" },
+  { id:98, title:"The Baron in the Trees", author:"Italo Calvino", type:"Fiction", genre:"Literary Fiction", rec:"", status:"Want to Read" },
+];
+
+let nextId = 99;
+const sortFields = ['title','author','type','genre','rec','status','priority'];
+const sortLabels = {title:'Title',author:'Author',type:'Type',genre:'Genre',rec:'Recommended By',status:'Status',priority:'Priority'};
+const priorityOrder = {Next:0,High:1,Medium:2,Low:3,None:4};
+let sortLevels = [{col:'title',dir:1}];
+books.forEach(b => { if (!b.priority) b.priority = 'None'; });
+
+// Load from localStorage if available
+function loadFromStorage() {
+  try {
+    const saved = localStorage.getItem('myBookList');
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (Array.isArray(data.books) && data.books.length > 0) books = data.books;
+      books.forEach(b => { if (!b.priority) b.priority = 'None'; });
+      nextId = Math.max(data.nextId || 99, ...books.map(b => (Number(b.id) || 0) + 1));
+    }
+  } catch(e) {}
+}
+
+function saveToStorage() {
+  try {
+    localStorage.setItem('myBookList', JSON.stringify({ books, nextId }));
+    const s = document.getElementById('save-status');
+    s.textContent = '✓ Saved!';
+    setTimeout(() => s.textContent = '', 2500);
+  } catch(e) {
+    alert('Could not save — localStorage may be unavailable in this environment. Use Export CSV to save your data.');
+  }
+}
+
+loadFromStorage();
+
+// Genre filter
+function refreshGenreFilter() {
+  const genres = [...new Set(books.map(b => b.genre))].sort();
+  const sel = document.getElementById('filter-genre');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All genres</option>';
+  genres.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; if(g===cur) o.selected=true; sel.appendChild(o); });
+}
+
+function sort(col) {
+  const current = sortLevels[0];
+  sortLevels = [{col,dir:current && current.col===col ? -current.dir : 1}];
+  renderSortBuilder(); render();
+}
+function addSortLevel() {
+  const available = sortFields.find(c=>!sortLevels.some(l=>l.col===c));
+  if (available) { sortLevels.push({col:available,dir:1}); renderSortBuilder(); render(); }
+}
+function changeSortLevel(i, key, value) {
+  if (key==='col' && sortLevels.some((l,j)=>j!==i && l.col===value)) return;
+  sortLevels[i][key] = key==='dir' ? Number(value) : value;
+  renderSortBuilder(); render();
+}
+function removeSortLevel(i) { sortLevels.splice(i,1); if (!sortLevels.length) sortLevels=[{col:'title',dir:1}]; renderSortBuilder(); render(); }
+function resetSort() { sortLevels=[{col:'title',dir:1}]; renderSortBuilder(); render(); }
+function renderSortBuilder() {
+  document.getElementById('sort-rows').innerHTML = sortLevels.map((l,i)=>`<div class="sort-row"><span>${i+1}.</span><select aria-label="Sort column ${i+1}" onchange="changeSortLevel(${i},'col',this.value)">${sortFields.map(c=>`<option value="${c}" ${l.col===c?'selected':''} ${sortLevels.some((v,j)=>j!==i&&v.col===c)?'disabled':''}>${sortLabels[c]}</option>`).join('')}</select><select aria-label="Sort direction ${i+1}" onchange="changeSortLevel(${i},'dir',this.value)"><option value="1" ${l.dir===1?'selected':''}>${l.col==='priority'?'Next first':'A → Z / Ascending'}</option><option value="-1" ${l.dir===-1?'selected':''}>${l.col==='priority'?'None first':'Z → A / Descending'}</option></select><button class="btn btn-sm" onclick="removeSortLevel(${i})" aria-label="Remove sort level">×</button></div>`).join('');
+  sortFields.forEach(c=>{const el=document.getElementById('arr-'+c); if(!el)return; const i=sortLevels.findIndex(l=>l.col===c); el.textContent=i<0?'↕':`${sortLevels[i].dir===1?'↑':'↓'}${i+1}`; el.parentElement.classList.toggle('active',i>=0);});
+}
+function setPriority(id, priority) { const b=books.find(x=>x.id===id); if(!b)return; b.priority=priority; render(); }
+function compareBooks(a,b,col) {
+  if(col==='priority') return priorityOrder[a.priority||'None']-priorityOrder[b.priority||'None'];
+  return String(a[col]||'').localeCompare(String(b[col]||''),undefined,{numeric:true,sensitivity:'base'});
+}
+
+function toggleStatus(id) {
+  const b = books.find(x => x.id === id);
+  if (!b) return;
+  b.status = b.status === 'Read' ? 'Want to Read' : 'Read';
+  render();
+}
+
+function toggleType(id) {
+  const b = books.find(x => x.id === id);
+  if (!b) return;
+  b.type = b.type === 'Fiction' ? 'Nonfiction' : 'Fiction';
+  render();
+}
+
+function deleteBook(id) {
+  if (!confirm('Remove this book from the list?')) return;
+  books = books.filter(x => x.id !== id);
+  refreshGenreFilter();
+  render();
+}
+
+function editCell(id, field, el) {
+  const b = books.find(x => x.id === id);
+  if (!b) return;
+  b[field] = el.textContent.trim();
+  if (field === 'genre') refreshGenreFilter();
+}
+
+function escapeHTML(v) {return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const typeF = document.getElementById('filter-type').value;
+  const genreF = document.getElementById('filter-genre').value;
+  const statusF = document.getElementById('filter-status').value;
+  const priorityF = document.getElementById('filter-priority').value;
+
+  let filtered = books.filter(b => {
+    if (typeF && b.type !== typeF) return false;
+    if (genreF && b.genre !== genreF) return false;
+    if (statusF && b.status !== statusF) return false;
+    if (priorityF && (b.priority||'None') !== priorityF) return false;
+    if (q && !b.title.toLowerCase().includes(q) && !b.author.toLowerCase().includes(q) && !b.rec.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  filtered.sort((a,b)=>{for(const l of sortLevels){const cmp=compareBooks(a,b,l.col); if(cmp)return cmp*l.dir;}return a.id-b.id;});
+  renderSortBuilder();
+
+  const readCount = books.filter(b => b.status === 'Read').length;
+  document.getElementById('subtitle').textContent = `${books.length} books · ${readCount} read · ${books.length - readCount} to read`;
+  document.getElementById('stats').textContent = `Showing ${filtered.length} of ${books.length} books`;
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = filtered.map(b => `
+    <tr>
+      <td contenteditable="true" onblur="editCell(${b.id},'title',this)" style="font-weight:500">${escapeHTML(b.title)}</td>
+      <td contenteditable="true" onblur="editCell(${b.id},'author',this)" style="color:#555">${escapeHTML(b.author)}</td>
+      <td>
+        <span class="badge badge-${b.type==='Fiction'?'fiction':'nonfiction'}" onclick="toggleType(${b.id})" title="Click to toggle">${b.type}</span>
+      </td>
+      <td contenteditable="true" onblur="editCell(${b.id},'genre',this)" style="color:#777;font-size:12px">${escapeHTML(b.genre)}</td>
+      <td contenteditable="true" onblur="editCell(${b.id},'rec',this)" style="color:#777;font-size:12px">${escapeHTML(b.rec)}</td>
+      <td>
+        <button class="read-toggle ${b.status==='Read'?'read':'want'}" onclick="toggleStatus(${b.id})" title="Click to toggle">
+          ${b.status==='Read'?'✅ Read':'🔖 Want to Read'}
+        </button>
+      </td>
+      <td><select class="priority-select ${(b.priority||'None').toLowerCase()}" aria-label="Priority for ${escapeHTML(b.title)}" onchange="setPriority(${b.id},this.value)">${['None','Next','High','Medium','Low'].map(p=>`<option ${b.priority===p?'selected':''}>${p}</option>`).join('')}</select></td>
+      <td><button class="del-btn" onclick="deleteBook(${b.id})" title="Remove book">×</button></td>
+    </tr>`).join('');
+}
+
+// Modal
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('f-title').focus();
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  ['f-title','f-author','f-genre','f-rec'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-type').value = 'Nonfiction';
+  document.getElementById('f-status').value = 'Want to Read';
+  document.getElementById('f-priority').value = 'None';
+}
+document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+function addBook() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  books.push({
+    id: nextId++,
+    title,
+    author: document.getElementById('f-author').value.trim(),
+    type: document.getElementById('f-type').value,
+    genre: document.getElementById('f-genre').value.trim() || 'Uncategorized',
+    rec: document.getElementById('f-rec').value.trim(),
+    status: document.getElementById('f-status').value,
+    priority: document.getElementById('f-priority').value,
+  });
+  refreshGenreFilter();
+  render();
+  closeModal();
+}
+
+// Export CSV
+function exportCSV() {
+  const headers = ['Title','Author','Type','Genre','Recommended By','Status','Priority'];
+  const rows = books.map(b => [b.title, b.author, b.type, b.genre, b.rec, b.status, b.priority||'None'].map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'my_book_list.csv';
+  a.click();
+}
+
+// Keyboard shortcut: Escape closes modal
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+refreshGenreFilter();
+render();
+</script>
+</body>
+</html>
